@@ -1,0 +1,9 @@
+# Hasil build sementara (APK final ada di ESP32Hub.apk di folder utama)
+android/build/
+android/ESP32Hub.apk
+*.class
+*.dex
+.idea/
+.gradle/
+local.properties
+*.idsig
