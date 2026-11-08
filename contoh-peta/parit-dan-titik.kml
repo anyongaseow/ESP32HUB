@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+<Document>
+  <name>Parit dan titik</name>
+  <Style id="parit"><LineStyle><color>ffd18b1e</color><width>3</width></LineStyle></Style>
+  <Style id="kolamN"><LineStyle><color>ffb06000</color></LineStyle><PolyStyle><color>66f0b060</color></PolyStyle></Style>
+  <StyleMap id="kolam"><Pair><key>normal</key><styleUrl>#kolamN</styleUrl></Pair><Pair><key>highlight</key><styleUrl>#kolamN</styleUrl></Pair></StyleMap>
+  <Folder>
+    <name>Parit</name>
+    <Placemark><name>Parit 1</name><styleUrl>#parit</styleUrl>
+      <LineString><coordinates>111.6352,-2.7090,0 111.6353,-2.7220,0</coordinates></LineString></Placemark>
+    <Placemark><name>Kolam air</name><styleUrl>#kolam</styleUrl>
+      <Polygon><outerBoundaryIs><LinearRing><coordinates>
+        111.6410,-2.7100 111.6440,-2.7100 111.6440,-2.7125 111.6410,-2.7125 111.6410,-2.7100
+      </coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>
+  </Folder>
+  <Placemark><name>Sensor WL-01</name><Point><coordinates>111.6375,-2.7160,0</coordinates></Point></Placemark>
+  <Placemark><name>Patroli</name>
+    <MultiGeometry>
+      <Point><coordinates>111.6420,-2.7180</coordinates></Point>
+      <gx:Track><when>2026-11-05T08:00:00Z</when><gx:coord>111.6420 -2.7180 0</gx:coord><gx:coord>111.6430 -2.7195 0</gx:coord><gx:coord>111.6415 -2.7205 0</gx:coord></gx:Track>
+    </MultiGeometry></Placemark>
+  <GroundOverlay><name>Foto udara</name></GroundOverlay>
+</Document>
+</kml>

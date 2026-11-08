@@ -13,6 +13,12 @@
 //   GET  /list              -> [{"n":"/log.csv","s":1234}, ...]  (semua .csv, termasuk subfolder)
 //   GET  /file?n=/log.csv   -> isi file (dengan Content-Length)
 //   POST /config  id,ssid,pass  -> simpan, lalu ESP restart dengan WiFi baru
+//   GET  /gps               -> {"fix":true,"lat":-2.123456,"lon":111.123456,"alt":35.2,"sats":8,"hdop":0.9,"age":420}
+//                              (dipakai layar Peta di aplikasi; "fix":false bila belum ada sinyal)
+//
+// GPS (opsional): modul GPS NMEA (mis. NEO-6M/NEO-M8N) di Serial2, dibaca tanpa library.
+//   TX modul GPS -> GPIO16 (GPS_RX_PIN), RX modul -> GPIO17 (boleh tidak disambung), VCC, GND.
+//   Punya kode GPS sendiri (mis. TinyGPS++)? Set USE_GPS 0 lalu panggil gpsSet(lat, lon, ...) tiap ada fix.
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -21,6 +27,12 @@
 
 #define RESET_PIN     0            // tombol BOOT
 #define DEFAULT_PASS  "12345678"
+
+#define USE_GPS       1            // 0 = tidak membaca Serial2 (isi lokasi sendiri dengan gpsSet)
+#define GPS_RX_PIN    16
+#define GPS_TX_PIN    17
+#define GPS_BAUD      9600
+#define GPS_STALE_MS  5000         // fix dianggap hilang bila tidak ada data baru selama ini
 
 WebServer server(80);
 Preferences prefs;
@@ -124,6 +136,105 @@ static void handleFile() {
   f.close();
 }
 
+// ---------------------------------------------------------------- GPS
+
+struct GpsFix {
+  bool has;            // pernah dapat posisi
+  double lat, lon;
+  float alt, hdop;
+  int sats;
+  unsigned long at;    // millis() saat posisi terakhir
+} gps = {false, 0, 0, NAN, NAN, -1, 0};
+
+// Untuk kode GPS sendiri: panggil setiap ada posisi baru.
+// Nilai yang tidak ada: alt/hdop = NAN, sats = -1. Contoh: gpsSet(-2.712345, 111.634567, NAN, -1, NAN);
+void gpsSet(double lat, double lon, float alt, int sats, float hdop) {
+  gps.lat = lat; gps.lon = lon; gps.alt = alt; gps.hdop = hdop;
+  if (sats >= 0) gps.sats = sats;
+  gps.has = true;
+  gps.at = millis();
+}
+
+#if USE_GPS
+static char nmea[100];
+static size_t nmeaLen = 0;
+
+// "ddmm.mmmm" + N/S/E/W -> derajat desimal
+static double nmeaDeg(const char *v, const char *hemi) {
+  if (!v[0]) return NAN;
+  double x = atof(v);
+  int deg = (int)(x / 100);
+  double d = deg + (x - deg * 100) / 60.0;
+  return (hemi[0] == 'S' || hemi[0] == 'W') ? -d : d;
+}
+
+static int hexVal(char c) {
+  if (c >= '0' && c <= '9') return c - '0';
+  if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+  if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+  return -1;
+}
+
+static void nmeaLine(char *s) {
+  if (s[0] != '$') return;
+  char *star = strchr(s, '*');
+  if (!star || hexVal(star[1]) < 0 || hexVal(star[2]) < 0) return;
+  uint8_t sum = 0;
+  for (char *p = s + 1; p < star; p++) sum ^= (uint8_t)*p;
+  if (sum != (hexVal(star[1]) << 4 | hexVal(star[2]))) return;   // checksum salah
+  *star = 0;
+
+  const char *f[20];
+  int n = 0;
+  f[n++] = s + 1;
+  for (char *p = s + 1; *p && n < 20; p++) {
+    if (*p == ',') { *p = 0; f[n++] = p + 1; }
+  }
+  if (strlen(f[0]) < 5) return;
+  const char *type = f[0] + strlen(f[0]) - 3;   // GPGGA / GNGGA / GPRMC / ...
+
+  if (!strcmp(type, "GGA") && n >= 10) {
+    gps.sats = atoi(f[7]);
+    if (atoi(f[6]) > 0) {
+      double lat = nmeaDeg(f[2], f[3]), lon = nmeaDeg(f[4], f[5]);
+      if (!isnan(lat) && !isnan(lon)) gpsSet(lat, lon, f[9][0] ? atof(f[9]) : NAN, -1, f[8][0] ? atof(f[8]) : NAN);
+    }
+  } else if (!strcmp(type, "RMC") && n >= 7 && f[2][0] == 'A') {
+    double lat = nmeaDeg(f[3], f[4]), lon = nmeaDeg(f[5], f[6]);
+    if (!isnan(lat) && !isnan(lon)) {
+      gps.lat = lat; gps.lon = lon; gps.has = true; gps.at = millis();
+    }
+  }
+}
+
+static void gpsPoll() {
+  while (Serial2.available()) {
+    char c = (char)Serial2.read();
+    if (c == '\n' || c == '\r') {
+      if (nmeaLen) { nmea[nmeaLen] = 0; nmeaLine(nmea); nmeaLen = 0; }
+    } else if (nmeaLen < sizeof(nmea) - 1) {
+      nmea[nmeaLen++] = c;
+    } else {
+      nmeaLen = 0;  // baris terlalu panjang: buang
+    }
+  }
+}
+#endif
+
+static void handleGps() {
+  unsigned long age = gps.has ? millis() - gps.at : 0;
+  bool fix = gps.has && age < GPS_STALE_MS;
+  String j = "{\"fix\":" + String(fix ? "true" : "false");
+  if (gps.has) {
+    j += ",\"lat\":" + String(gps.lat, 6) + ",\"lon\":" + String(gps.lon, 6) + ",\"age\":" + String(age);
+    if (!isnan(gps.alt)) j += ",\"alt\":" + String(gps.alt, 1);
+    if (!isnan(gps.hdop)) j += ",\"hdop\":" + String(gps.hdop, 1);
+  }
+  if (gps.sats >= 0) j += ",\"sats\":" + String(gps.sats);
+  j += "}";
+  server.send(200, "application/json", j);
+}
+
 static void handleConfig() {
   String id = server.arg("id"), ssid = server.arg("ssid"), pass = server.arg("pass");
   id.trim(); ssid.trim();
@@ -155,8 +266,13 @@ void setup() {
   server.on("/list", HTTP_GET, handleList);
   server.on("/file", HTTP_GET, handleFile);
   server.on("/config", HTTP_POST, handleConfig);
+  server.on("/gps", HTTP_GET, handleGps);
   server.onNotFound([]() { server.send(404, "text/plain", "not found"); });
   server.begin();
+
+#if USE_GPS
+  Serial2.begin(GPS_BAUD, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
+#endif
 
   // >>> Taruh setup sensor / logging Anda di sini <<<
 }
@@ -164,6 +280,9 @@ void setup() {
 void loop() {
   server.handleClient();
   if (restartAt && (long)(millis() - restartAt) > 0) ESP.restart();
+#if USE_GPS
+  gpsPoll();
+#endif
 
   // >>> Taruh kode logging Anda di sini (tulis ke LittleFS sebagai .csv) <<<
   // Jangan blok terlalu lama (pakai millis(), bukan delay panjang),

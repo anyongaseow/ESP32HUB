@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.Editable;
@@ -43,7 +44,7 @@ public class MainActivity extends Activity implements Downloader.Listener {
     private Downloader dl;
 
     private TextView title;
-    private ImageView headerBtn;
+    private ImageView headerBtn, mapBtn, helpBtn;
     private FrameLayout content;
     private boolean inSettings;
     private SettingsScreen settings;
@@ -51,7 +52,8 @@ public class MainActivity extends Activity implements Downloader.Listener {
     // layar Download
     private LinearLayout cardsBox;
     private EditText search;
-    private TextView summary, allBtn, empty;
+    private TextView summary, allBtn;
+    private View empty, bottomBar, bottomLine;
     private final Map<Long, Card> cards = new HashMap<>();
     private final Set<Long> collapsed = new HashSet<>();
 
@@ -115,12 +117,14 @@ public class MainActivity extends Activity implements Downloader.Listener {
         header.setPadding(Ui.dp(this, 20), Ui.dp(this, 12), Ui.dp(this, 8), Ui.dp(this, 8));
         title = Ui.text(this, "", 22, R.color.text, true);
         header.addView(title, Ui.weight(1));
-        headerBtn = new ImageView(this);
-        int p = Ui.dp(this, 12);
-        headerBtn.setPadding(p, p, p, p);
-        headerBtn.setBackground(getDrawable(android.R.drawable.list_selector_background));
-        headerBtn.setOnClickListener(v -> { if (inSettings) showDownloads(); else showSettings(); });
-        header.addView(headerBtn, Ui.lp(Ui.dp(this, 48), Ui.dp(this, 48)));
+        mapBtn = Ui.iconButton(this, R.drawable.ic_map, "Peta",
+                v -> startActivity(new Intent(this, MapActivity.class)));
+        header.addView(mapBtn);
+        helpBtn = Ui.iconButton(this, R.drawable.ic_help, "Panduan", v -> openGuide());
+        header.addView(helpBtn);
+        headerBtn = Ui.iconButton(this, R.drawable.ic_settings, "Pengaturan",
+                v -> { if (inSettings) showDownloads(); else showSettings(); });
+        header.addView(headerBtn);
         root.addView(header);
 
         content = new FrameLayout(this);
@@ -157,6 +161,8 @@ public class MainActivity extends Activity implements Downloader.Listener {
     private void showSettings() {
         inSettings = true;
         title.setText("Pengaturan");
+        mapBtn.setVisibility(View.GONE);
+        helpBtn.setVisibility(View.GONE);
         headerBtn.setImageResource(R.drawable.ic_back);
         headerBtn.setContentDescription("Kembali");
         content.removeAllViews();
@@ -166,6 +172,8 @@ public class MainActivity extends Activity implements Downloader.Listener {
     void showDownloads() {
         inSettings = false;
         title.setText("Download");
+        mapBtn.setVisibility(View.VISIBLE);
+        helpBtn.setVisibility(View.VISIBLE);
         headerBtn.setImageResource(R.drawable.ic_settings);
         headerBtn.setContentDescription("Pengaturan");
         content.removeAllViews();
@@ -188,12 +196,35 @@ public class MainActivity extends Activity implements Downloader.Listener {
         scroll.addView(cardsBox);
         screen.addView(scroll, new LinearLayout.LayoutParams(MATCH_PARENT, 0, 1));
 
-        empty = Ui.text(this, "Belum ada ESP.\nTambahkan lewat tombol ⚙ di kanan atas.", 15, R.color.sub, false);
-        empty.setGravity(Gravity.CENTER);
-        empty.setPadding(0, Ui.dp(this, 48), 0, 0);
-        cardsBox.addView(empty);
+        // Layar kosong: jelaskan langkah pertama dan beri tombolnya langsung.
+        LinearLayout emptyBox = Ui.col(this);
+        emptyBox.setGravity(Gravity.CENTER_HORIZONTAL);
+        emptyBox.setPadding(Ui.dp(this, 24), Ui.dp(this, 56), Ui.dp(this, 24), 0);
+        TextView emptyTitle = Ui.text(this, "Belum ada ESP", 17, R.color.text, true);
+        emptyTitle.setGravity(Gravity.CENTER);
+        emptyBox.addView(emptyTitle);
+        TextView emptyText = Ui.text(this, "Daftarkan SSID dan password WiFi tiap ESP, lalu file CSV-nya bisa diunduh dari sini.",
+                14, R.color.sub, false);
+        emptyText.setGravity(Gravity.CENTER);
+        emptyText.setPadding(0, Ui.dp(this, 6), 0, Ui.dp(this, 16));
+        emptyBox.addView(emptyText);
+        TextView emptyAdd = Ui.button(this, "Tambah ESP", true);
+        emptyAdd.setOnClickListener(v -> { showSettings(); settings.addNew(); });
+        emptyBox.addView(emptyAdd);
+        TextView emptyGuide = Ui.text(this, "Lihat panduan", 14, R.color.accent, true);
+        emptyGuide.setGravity(Gravity.CENTER);
+        emptyGuide.setMinHeight(Ui.dp(this, 44));
+        emptyGuide.setPadding(Ui.dp(this, 16), 0, Ui.dp(this, 16), 0);
+        emptyGuide.setBackground(Ui.pressable(this, false));
+        emptyGuide.setOnClickListener(v -> openGuide());
+        emptyBox.addView(emptyGuide, Ui.margins(this, 0, 6, 0, 0));
+        empty = emptyBox;
+        cardsBox.addView(emptyBox);
 
+        bottomLine = Ui.divider(this);
+        screen.addView(bottomLine);
         LinearLayout bottom = Ui.row(this);
+        bottomBar = bottom;
         bottom.setPadding(Ui.dp(this, 20), Ui.dp(this, 10), Ui.dp(this, 16), Ui.dp(this, 12));
         bottom.setBackgroundColor(Ui.color(this, R.color.card));
         summary = Ui.text(this, "", 13, R.color.sub, false);
@@ -238,7 +269,12 @@ public class MainActivity extends Activity implements Downloader.Listener {
             c.root.setVisibility(match ? View.VISIBLE : View.GONE);
             if (match) shown++;
         }
-        empty.setVisibility(cards.isEmpty() ? View.VISIBLE : View.GONE);
+        boolean none = cards.isEmpty();
+        empty.setVisibility(none ? View.VISIBLE : View.GONE);
+        // Tanpa ESP, kolom cari dan bilah bawah tidak berguna.
+        search.setVisibility(none ? View.GONE : View.VISIBLE);
+        bottomBar.setVisibility(none ? View.GONE : View.VISIBLE);
+        bottomLine.setVisibility(none ? View.GONE : View.VISIBLE);
         allBtn.setTag(shown);
         updateSummary();
     }
@@ -342,6 +378,10 @@ public class MainActivity extends Activity implements Downloader.Listener {
         }
     }
 
+    void openGuide() {
+        startActivity(new Intent(this, GuideActivity.class));
+    }
+
     void toast(String s) {
         Toast.makeText(this, s, Toast.LENGTH_SHORT).show();
     }
@@ -351,14 +391,14 @@ public class MainActivity extends Activity implements Downloader.Listener {
     private final class Card {
         final long key;
         final LinearLayout root, filesBox;
-        final TextView name, ssid, chip, msg, btn, allFilesBtn, webBtn;
+        final TextView name, ssid, chip, msg, btn, allFilesBtn, webBtn, mapOpenBtn;
         final LinearLayout actions;
         final List<FileRow> rows = new ArrayList<>();
 
         Card(Store.Esp e) {
             key = e.key;
             root = Ui.col(MainActivity.this);
-            root.setBackground(Ui.round(MainActivity.this, R.color.card, 16));
+            root.setBackground(Ui.round(MainActivity.this, R.color.card, 14));
             int p = Ui.dp(MainActivity.this, 14);
             root.setPadding(p, p, p, p);
 
@@ -370,8 +410,10 @@ public class MainActivity extends Activity implements Downloader.Listener {
             names.addView(ssid);
             top.addView(names, Ui.weight(1));
             chip = Ui.text(MainActivity.this, "", 12, R.color.sub, true);
-            chip.setPadding(Ui.dp(MainActivity.this, 8), 0, Ui.dp(MainActivity.this, 8), 0);
+            chip.setPadding(Ui.dp(MainActivity.this, 8), Ui.dp(MainActivity.this, 3),
+                    Ui.dp(MainActivity.this, 8), Ui.dp(MainActivity.this, 3));
             top.addView(chip);
+            top.addView(Ui.gap(MainActivity.this, 8));
             btn = Ui.button(MainActivity.this, "Buka", false);
             btn.setOnClickListener(v -> {
                 if (dl.connectedKey() == key) dl.stopAll();
@@ -379,6 +421,7 @@ public class MainActivity extends Activity implements Downloader.Listener {
             });
             top.addView(btn);
             root.addView(top);
+            names.setBackground(Ui.pressable(MainActivity.this, false));
             names.setOnClickListener(v -> {
                 if (!collapsed.remove(key)) collapsed.add(key);
                 Store.Esp cur = store.find(key);
@@ -390,17 +433,22 @@ public class MainActivity extends Activity implements Downloader.Listener {
             root.addView(msg);
 
             filesBox = Ui.col(MainActivity.this);
-            root.addView(filesBox);
+            root.addView(filesBox, Ui.margins(MainActivity.this, 0, 6, 0, 0));
+
+            // "Unduh semua (N)" punya baris sendiri: di sepertiga lebar, teksnya terpotong jadi dua baris.
+            allFilesBtn = Ui.button(MainActivity.this, "", true);
+            allFilesBtn.setOnClickListener(v -> withPermission(() -> dl.downloadAllFiles(key)));
+            root.addView(allFilesBtn, Ui.margins(MainActivity.this, 0, 12, 0, 0));
 
             actions = Ui.row(MainActivity.this);
             webBtn = Ui.button(MainActivity.this, "Buka web", false);
             webBtn.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, BrowserActivity.class)));
             actions.addView(webBtn, Ui.weight(1));
             actions.addView(Ui.gap(MainActivity.this, 8));
-            allFilesBtn = Ui.button(MainActivity.this, "", true);
-            allFilesBtn.setOnClickListener(v -> withPermission(() -> dl.downloadAllFiles(key)));
-            actions.addView(allFilesBtn, Ui.weight(1));
-            root.addView(actions, Ui.margins(MainActivity.this, 0, 12, 0, 0));
+            mapOpenBtn = Ui.button(MainActivity.this, "Peta GPS", false);
+            mapOpenBtn.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, MapActivity.class)));
+            actions.addView(mapOpenBtn, Ui.weight(1));
+            root.addView(actions, Ui.margins(MainActivity.this, 0, 8, 0, 0));
         }
 
         void bind(Store.Esp e, Downloader.Job j) {
@@ -445,7 +493,12 @@ public class MainActivity extends Activity implements Downloader.Listener {
             allFilesBtn.setText("Unduh semua (" + notDone + ")");
             allFilesBtn.setVisibility(canAll ? View.VISIBLE : View.GONE);
             webBtn.setVisibility(connected ? View.VISIBLE : View.GONE);
-            actions.setVisibility(canAll || connected ? View.VISIBLE : View.GONE);
+            mapOpenBtn.setVisibility(connected ? View.VISIBLE : View.GONE);
+            actions.setVisibility(connected ? View.VISIBLE : View.GONE);
+            // Garis tepi hijau menandai ESP yang sedang tersambung (hanya satu pada satu waktu).
+            GradientDrawable cardBg = Ui.round(MainActivity.this, R.color.card, 14);
+            if (connected) cardBg.setStroke(Ui.dp(MainActivity.this, 2), Ui.color(MainActivity.this, R.color.ok));
+            root.setBackground(cardBg);
             if (!show) return;
             if (rows.size() != files.size()) {
                 filesBox.removeAllViews();
@@ -453,7 +506,8 @@ public class MainActivity extends Activity implements Downloader.Listener {
                 for (int i = 0; i < files.size(); i++) {
                     FileRow r = new FileRow(key);
                     rows.add(r);
-                    filesBox.addView(r.root, Ui.margins(MainActivity.this, 0, 4, 0, 0));
+                    if (i > 0) filesBox.addView(Ui.divider(MainActivity.this));
+                    filesBox.addView(r.root, Ui.lp(MATCH_PARENT, WRAP_CONTENT));
                 }
             }
             for (int i = 0; i < files.size(); i++) rows.get(i).bind(files.get(i));
@@ -461,7 +515,7 @@ public class MainActivity extends Activity implements Downloader.Listener {
 
         private void chip(String s, int colorRes) {
             chip.setText(s);
-            chip.setTextColor(Ui.color(MainActivity.this, colorRes));
+            Ui.chip(chip, colorRes);
             chip.setVisibility(s.isEmpty() ? View.GONE : View.VISIBLE);
         }
     }
@@ -472,15 +526,16 @@ public class MainActivity extends Activity implements Downloader.Listener {
         final LinearLayout root = Ui.col(MainActivity.this);
         final TextView name = Ui.oneLine(Ui.text(MainActivity.this, "", 14, R.color.text, false), TextUtils.TruncateAt.MIDDLE);
         final TextView info = Ui.text(MainActivity.this, "", 12, R.color.sub, false);
-        final TextView action = Ui.text(MainActivity.this, "", 13, R.color.accent, true);
+        final TextView action = Ui.text(MainActivity.this, "", 14, R.color.accent, true);
         final ProgressBar bar = Ui.bar(MainActivity.this);
         Downloader.FileState file;
 
         FileRow(long key) {
             this.key = key;
-            int p = Ui.dp(MainActivity.this, 8);
-            root.setPadding(p, p, p, p);
-            root.setBackground(getDrawable(android.R.drawable.list_selector_background));
+            root.setPadding(Ui.dp(MainActivity.this, 4), Ui.dp(MainActivity.this, 10),
+                    Ui.dp(MainActivity.this, 4), Ui.dp(MainActivity.this, 10));
+            root.setMinimumHeight(Ui.dp(MainActivity.this, 52));
+            root.setBackground(Ui.pressable(MainActivity.this, false));
             LinearLayout line = Ui.row(MainActivity.this);
             LinearLayout texts = Ui.col(MainActivity.this);
             texts.addView(name);

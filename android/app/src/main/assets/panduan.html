@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panduan ESP32 Hub</title>
+<style>
+/* Token warna sama dengan res/values/colors.xml, supaya panduan terlihat seperti bagian aplikasi. */
+:root {
+  --bg: #F4F5F7; --card: #FFFFFF; --text: #1B1D21; --sub: #5B6270; --line: #E5E7EB;
+  --accent: #2563EB; --on-accent: #FFFFFF; --ok: #15803D; --err: #DC2626; --warn: #B45309;
+  /* latar label status: warna status 14% */
+  --accent-t: rgba(37,99,235,.14); --ok-t: rgba(21,128,61,.14); --err-t: rgba(220,38,38,.14);
+  --warn-t: rgba(180,83,9,.14); --sub-t: rgba(91,98,112,.16);
+}
+:root[data-theme="dark"] {
+  --bg: #111315; --card: #1C1F23; --text: #ECEDEF; --sub: #9CA3AF; --line: #2D3137;
+  --accent: #60A5FA; --on-accent: #0B1220; --ok: #4ADE80; --err: #F87171; --warn: #FBBF24;
+  --accent-t: rgba(96,165,250,.14); --ok-t: rgba(74,222,128,.14); --err-t: rgba(248,113,113,.14);
+  --warn-t: rgba(251,191,36,.14); --sub-t: rgba(156,163,175,.16);
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.45 Roboto, system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+main { max-width: 560px; margin: 0 auto; padding: 4px 16px 40px; }
+
+/* Lompat ke bagian */
+nav {
+  position: sticky; top: 0; z-index: 2; background: var(--bg);
+  display: flex; gap: 6px; padding: 8px 16px 10px; overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+}
+nav button {
+  flex: none; min-height: 40px; padding: 0 14px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--card); color: var(--text);
+  font: 600 14px Roboto, system-ui, sans-serif;
+}
+nav button:active { background: var(--line); }
+
+section { padding-top: 26px; }
+h2 { display: flex; align-items: center; gap: 10px; margin: 0 0 4px; font-size: 20px; }
+h2 .n {
+  flex: none; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center;
+  background: var(--accent); color: var(--on-accent); font-size: 16px;
+}
+.lead { margin: 0 0 14px 40px; color: var(--sub); font-size: 14px; }
+.card { background: var(--card); border-radius: 14px; padding: 14px; }
+.card + .card { margin-top: 10px; }
+.sub { color: var(--sub); font-size: 13px; }
+
+/* Alur langkah: kotak bernomor dengan panah ke bawah */
+.flow { display: flex; flex-direction: column; align-items: stretch; }
+.step { display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 14px; padding: 12px 14px; }
+.step .k {
+  flex: none; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--accent);
+  color: var(--accent); font-weight: 700; font-size: 13px; display: grid; place-items: center;
+}
+.step .t { flex: 1; min-width: 0; }
+.step .t b { display: block; }
+.arrow { height: 18px; display: flex; justify-content: center; }
+.arrow svg { width: 14px; height: 18px; }
+.arrow path { stroke: var(--sub); }
+
+/* Tiruan tombol/label aplikasi, supaya pengguna mengenali yang harus diketuk */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 34px; padding: 0 12px;
+  border-radius: 8px; font-weight: 700; font-size: 13px; white-space: nowrap;
+  border: 1px solid var(--line); color: var(--accent); background: var(--card);
+}
+.btn.p { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.chip { display: inline-block; padding: 2px 8px; border-radius: 6px; font-weight: 700; font-size: 12px; }
+.ico { flex: none; width: 34px; height: 34px; display: grid; place-items: center; }
+.ico svg { width: 24px; height: 24px; fill: var(--text); }
+
+/* Pop-up Android */
+.dialog { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; font-size: 12px; min-width: 120px; }
+.dialog .row { display: flex; justify-content: space-between; margin-top: 6px; color: var(--accent); font-weight: 700; }
+.dialog .row .hit { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; padding: 0 3px; }
+
+/* Kredensial pabrik */
+.pair { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: baseline; }
+.pair code { font: 700 16px/1.2 "Roboto Mono", monospace; }
+
+/* Legenda status */
+.legend { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: center; }
+
+/* Jalur folder */
+.path { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 13px; }
+.path span { background: var(--bg); border-radius: 6px; padding: 3px 7px; }
+.path i { color: var(--sub); font-style: normal; }
+.path .file { color: var(--ok); font-weight: 700; }
+
+/* Peta */
+.mapart { width: 100%; height: auto; display: block; border-radius: 10px; }
+.dots { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin-top: 12px; }
+.dot { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.dot svg { flex: none; width: 22px; height: 22px; }
+.formats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.formats span { border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; font-size: 13px; font-weight: 600; }
+.gps { display: flex; gap: 10px; margin-top: 10px; }
+.gps > div { flex: 1; border-radius: 10px; padding: 10px; text-align: center; font-size: 13px; }
+.gps b { display: block; font-size: 22px; }
+.gesture { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; text-align: center; font-size: 12px; color: var(--sub); }
+.gesture svg { width: 36px; height: 36px; display: block; margin: 0 auto 4px; }
+
+/* Kalau gagal */
+.fix { display: grid; grid-template-columns: 34% auto 1fr; gap: 10px; align-items: center; }
+.fix .from { font-weight: 600; }
+.fix svg { width: 18px; height: 14px; }
+.fix svg path { stroke: var(--sub); }
+.boot { display: flex; align-items: center; gap: 12px; }
+.boot svg { flex: none; width: 92px; height: 56px; }
+
+.tip { display: flex; gap: 8px; margin-top: 10px; font-size: 13px; color: var(--sub); }
+.tip b { color: var(--text); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<nav aria-label="Bagian panduan">
+  <button data-go="daftar">1 Daftar</button>
+  <button data-go="unduh">2 Unduh</button>
+  <button data-go="peta">3 Peta</button>
+  <button data-go="gagal">Kalau gagal</button>
+</nav>
+
+<main>
+
+<!-- 1. DAFTARKAN ESP -->
+<section id="daftar">
+  <h2><span class="n">1</span>Daftarkan ESP</h2>
+  <p class="lead">Cukup sekali untuk tiap ESP.</p>
+
+  <div class="flow">
+    <div class="step">
+      <span class="k">1</span>
+      <div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M19.14 12.94a7.5 7.5 0 0 0 0-1.88l2.03-1.58a.5.5 0 0 0 .12-.61l-1.92-3.32a.5.5 0 0 0-.59-.22l-2.39.96a7 7 0 0 0-1.62-.94l-.36-2.54a.5.5 0 0 0-.48-.41h-3.84a.5.5 0 0 0-.47.41l-.36 2.54a7 7 0 0 0-1.62.94l-2.39-.96a.5.5 0 0 0-.59.22L2.74 8.87a.5.5 0 0 0 .12.61l2.03 1.58a7.5 7.5 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54a7 7 0 0 0 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.5.5 0 0 0-.12-.61zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/></svg></div>
+      <div class="t"><b>Pengaturan</b><span class="sub">ikon roda di kanan atas</span></div>
+    </div>
+    <div class="arrow" aria-hidden="true"><svg viewBox="0 0 14 18"><path d="M7 1v15M2 11l5 5 5-5" fill="none" stroke-width="2"/></svg></div>
+    <div class="step">
+      <span class="k">2</span>
+      <div class="t"><span class="btn p">+ Tambah ESP</span></div>
+    </div>
+    <div class="arrow" aria-hidden="true"><svg viewBox="0 0 14 18"><path d="M7 1v15M2 11l5 5 5-5" fill="none" stroke-width="2"/></svg></div>
+    <div class="step">
+      <span class="k">3</span>
+      <div class="t"><b>ID, SSID, password</b><span class="sub">ID jadi nama folder unduhan</span></div>
+    </div>
+    <div class="arrow" aria-hidden="true"><svg viewBox="0 0 14 18"><path d="M7 1v15M2 11l5 5 5-5" fill="none" stroke-width="2"/></svg></div>
+    <div class="step">
+      <span class="k">4</span>
+      <div class="t"><span class="btn">Simpan</span></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <div class="sub" style="margin-bottom:8px">ESP baru dari pabrik</div>
+    <div class="pair">
+      <span class="sub">SSID</span><code>ESP32-xxxxxx</code>
+      <span class="sub">Password</span><code>12345678</code>
+    </div>
+    <div class="tip"><span>Centang <b>Kirim juga ke ESP</b> untuk mengganti WiFi ESP sekaligus. HP harus dekat ESP.</span></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="btn">+ Tambah banyak</span>
+      <span class="sub">ESP 1 sampai ESP 50 dalam satu isian</span>
+    </div>
+  </div>
+</section>
+
+<!-- 2. UNDUH DATA -->
+<section id="unduh">
+  <h2><span class="n">2</span>Unduh data</h2>
+  <p class="lead">Tanpa internet. HP tersambung ke WiFi milik ESP.</p>
+
+  <div class="flow">
+    <div class="step">
+      <span class="k">1</span>
+      <div class="t"><b>Kartu ESP</b><span class="sub">di layar Download</span></div>
+      <span class="btn">Buka</span>
+    </div>
+    <div class="arrow" aria-hidden="true"><svg viewBox="0 0 14 18"><path d="M7 1v15M2 11l5 5 5-5" fill="none" stroke-width="2"/></svg></div>
+    <div class="step">
+      <span class="k">2</span>
+      <div class="t"><b>Pop-up Android</b><span class="sub">pilih Hubungkan</span></div>
+      <div class="dialog" aria-hidden="true">Hubungkan ke perangkat?<div class="row"><span>Batal</span><span class="hit">Hubungkan</span></div></div>
+    </div>
+    <div class="arrow" aria-hidden="true"><svg viewBox="0 0 14 18"><path d="M7 1v15M2 11l5 5 5-5" fill="none" stroke-width="2"/></svg></div>
+    <div class="step">
+      <span class="k">3</span>
+      <div class="t"><b>Ketuk file</b><span class="sub">atau semua sekaligus</span></div>
+      <span class="btn p">Unduh semua</span>
+    </div>
+    <div class="arrow" aria-hidden="true"><svg viewBox="0 0 14 18"><path d="M7 1v15M2 11l5 5 5-5" fill="none" stroke-width="2"/></svg></div>
+    <div class="step">
+      <span class="k">4</span>
+      <div class="t"><b>Ketuk lagi</b><span class="sub">terbuka di Google Sheets</span></div>
+      <span class="chip" style="color:var(--ok)">&#10003; Buka</span>
+    </div>
+  </div>
+
+  <div class="tip" style="margin-left:4px"><span><b>Tekan lama</b> sebuah file untuk mengunduhnya ulang.</span></div>
+
+  <div class="card" style="margin-top:14px">
+    <div class="sub" style="margin-bottom:10px">Arti label di kartu ESP</div>
+    <div class="legend">
+      <span class="chip" style="color:var(--warn);background:var(--warn-t)">Antri</span><span>menunggu giliran</span>
+      <span class="chip" style="color:var(--accent);background:var(--accent-t)">Menyambung</span><span>masuk ke WiFi ESP</span>
+      <span class="chip" style="color:var(--ok);background:var(--ok-t)">Tersambung</span><span>siap, daftar file tampil</span>
+      <span class="chip" style="color:var(--ok);background:var(--ok-t)">Selesai</span><span>semua file sudah di HP</span>
+      <span class="chip" style="color:var(--err);background:var(--err-t)">Gagal</span><span>lihat <a href="#" data-go="gagal" style="color:var(--accent)">Kalau gagal</a></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sub" style="margin-bottom:8px">File tersimpan di</div>
+    <div class="path">
+      <span>Download</span><i>/</i><span>ESP32Hub</span><i>/</i><span>ESP 1</span><i>/</i>
+      <span class="file">data_2026-10-01_2026-10-31.csv</span>
+    </div>
+    <div class="tip"><span>Tanggal di nama file diambil dari isi file: data pertama dan terakhir.</span></div>
+  </div>
+</section>
+
+<!-- 3. PETA -->
+<section id="peta">
+  <h2><span class="n">3</span>Peta</h2>
+  <p class="lead">Ikon peta di kanan atas. Tetap tampil tanpa internet.</p>
+
+  <div class="card">
+    <svg class="mapart" viewBox="0 0 320 170" role="img" aria-label="Contoh layar peta dengan titik sensor, HP, dan titik buatan">
+      <rect width="320" height="170" fill="var(--bg)"/>
+      <path d="M30 30 L170 18 L190 60 L290 70 L280 150 L120 158 L60 120 Z" fill="var(--sub-t)" stroke="var(--sub)" stroke-width="1.5"/>
+      <path d="M100 25 L95 140 M170 18 L160 155 M60 80 L285 95" stroke="var(--line)" stroke-width="1.5" fill="none"/>
+      <path d="M118 112 Q140 96 150 84 T182 70" stroke="var(--accent)" stroke-width="2" stroke-dasharray="3 4" fill="none" opacity=".7"/>
+      <circle cx="182" cy="70" r="9" fill="#fff"/><circle cx="182" cy="70" r="6.5" fill="var(--accent)"/>
+      <circle cx="232" cy="122" r="22" fill="var(--ok-t)" stroke="var(--ok)" stroke-opacity=".45"/>
+      <circle cx="232" cy="122" r="8" fill="#fff"/><circle cx="232" cy="122" r="5.5" fill="var(--ok)"/>
+      <circle cx="78" cy="58" r="7" fill="#fff"/><circle cx="78" cy="58" r="5" fill="var(--warn)"/>
+      <circle cx="132" cy="134" r="7" fill="#fff"/><circle cx="132" cy="134" r="5" fill="var(--warn)"/>
+      <path d="M14 156 h50 M14 152 v4 M64 152 v4" stroke="var(--text)" stroke-width="1.5" fill="none"/>
+    </svg>
+    <div class="dots">
+      <div class="dot"><svg viewBox="0 0 22 22"><circle cx="11" cy="11" r="8" fill="var(--accent)" stroke="#fff" stroke-width="2"/></svg><span><b>Sensor</b><br><span class="sub">GPS dari ESP</span></span></div>
+      <div class="dot"><svg viewBox="0 0 22 22"><circle cx="11" cy="11" r="8" fill="var(--ok)" stroke="#fff" stroke-width="2"/></svg><span><b>HP</b><br><span class="sub">posisi Anda</span></span></div>
+      <div class="dot"><svg viewBox="0 0 22 22"><circle cx="11" cy="11" r="8" fill="var(--sub)" stroke="#fff" stroke-width="2"/></svg><span><b>Abu-abu</b><br><span class="sub">posisi sensor terakhir</span></span></div>
+      <div class="dot"><svg viewBox="0 0 22 22"><circle cx="11" cy="11" r="7" fill="var(--warn)" stroke="#fff" stroke-width="2"/></svg><span><b>Titik</b><br><span class="sub">buatan Anda</span></span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:10px"><span class="btn p">Impor</span><span class="sub">bisa beberapa file sekaligus</span></div>
+    <div class="formats"><span>GeoJSON</span><span>KML</span><span>KMZ</span><span>GeoPDF</span></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:10px"><span class="btn p">+ Titik</span><span class="sub">lalu Tambah titik, di posisi HP</span></div>
+    <div class="gps">
+      <div style="background:var(--ok-t);color:var(--ok)"><b>&le; 5 m</b>bisa ditambah</div>
+      <div style="background:var(--warn-t);color:var(--warn)"><b>&gt; 5 m</b>tunggu GPS</div>
+    </div>
+    <div class="tip"><span>Akurasi GPS cepat membaik di tempat terbuka.</span></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:10px"><span class="btn">Simpan peta</span><span class="sub">peta + titik jadi file baru</span></div>
+    <div class="path" style="margin-top:10px">
+      <span>Download</span><i>/</i><span>ESP32Hub</span><i>/</i><span class="file">Peta</span>
+    </div>
+    <div class="tip"><span>Kirim lewat WA, atau buka di QGIS dan Google Earth.</span></div>
+  </div>
+
+  <div class="gesture" aria-label="Gerakan di peta">
+    <div><svg viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="20" r="6" fill="none" stroke="var(--text)" stroke-width="2"/><path d="M6 20h-4m32 0h-4M18 8V4m0 28v4" stroke="var(--sub)" stroke-width="2"/></svg>Geser<br>1 jari</div>
+    <div><svg viewBox="0 0 36 36" aria-hidden="true"><circle cx="11" cy="25" r="5" fill="none" stroke="var(--text)" stroke-width="2"/><circle cx="25" cy="11" r="5" fill="none" stroke="var(--text)" stroke-width="2"/><path d="M5 31l-3 3m29-29l3-3" stroke="var(--sub)" stroke-width="2"/></svg>Cubit<br>zoom</div>
+    <div><svg viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="6" fill="none" stroke="var(--text)" stroke-width="2"/><circle cx="18" cy="18" r="12" fill="none" stroke="var(--sub)" stroke-width="2"/></svg>Ketuk 2x<br>perbesar</div>
+  </div>
+</section>
+
+<!-- KALAU GAGAL -->
+<section id="gagal">
+  <h2><span class="n" style="background:var(--err)">!</span>Kalau gagal</h2>
+  <p class="lead">Masalah yang paling sering muncul.</p>
+
+  <div class="card fix">
+    <span class="from"><span class="chip" style="color:var(--err);background:var(--err-t)">Gagal</span></span>
+    <svg viewBox="0 0 18 14" aria-hidden="true"><path d="M1 7h15M11 2l5 5-5 5" fill="none" stroke-width="2"/></svg>
+    <span>Dekatkan HP ke ESP, lalu cek password ESP di Pengaturan.</span>
+  </div>
+
+  <div class="card fix">
+    <span class="from">Pop-up Hubungkan ditolak</span>
+    <svg viewBox="0 0 18 14" aria-hidden="true"><path d="M1 7h15M11 2l5 5-5 5" fill="none" stroke-width="2"/></svg>
+    <span>Tekan <b>Buka</b> lagi, pilih Hubungkan.</span>
+  </div>
+
+  <div class="card">
+    <div class="from" style="margin-bottom:10px;font-weight:600">Lupa password ESP</div>
+    <div class="boot">
+      <svg viewBox="0 0 92 56" role="img" aria-label="Papan ESP32 dengan tombol BOOT ditekan">
+        <rect x="2" y="8" width="88" height="40" rx="5" fill="none" stroke="var(--sub)" stroke-width="2"/>
+        <rect x="30" y="16" width="30" height="22" rx="2" fill="var(--sub-t)"/>
+        <rect x="68" y="30" width="14" height="10" rx="2" fill="var(--accent)"/>
+        <text x="75" y="26" font-size="8" font-weight="700" text-anchor="middle" fill="var(--accent)">BOOT</text>
+      </svg>
+      <span>Tahan <b>BOOT</b> saat ESP dinyalakan, sekitar 3 detik. Login kembali ke <b>ESP32-xxxxxx</b> / <b>12345678</b>.</span>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+// Tema dikirim aplikasi lewat #dark, supaya ikut pilihan Terang/Gelap di Pengaturan.
+if (location.hash === '#dark') document.documentElement.dataset.theme = 'dark';
+document.addEventListener('click', function (e) {
+  var t = e.target.closest('[data-go]');
+  if (!t) return;
+  e.preventDefault();
+  var s = document.getElementById(t.getAttribute('data-go'));
+  if (s) window.scrollTo({ top: s.offsetTop - document.querySelector('nav').offsetHeight, behavior: 'smooth' });
+});
+</script>
+</body>
+</html>

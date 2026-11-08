@@ -75,7 +75,7 @@ public class BrowserActivity extends Activity {
 
         LinearLayout header = Ui.row(this);
         header.setPadding(Ui.dp(this, 4), Ui.dp(this, 4), Ui.dp(this, 8), Ui.dp(this, 4));
-        header.addView(iconButton(R.drawable.ic_back, "Tutup", v -> finish()));
+        header.addView(Ui.iconButton(this, R.drawable.ic_back, "Tutup", v -> finish()));
         LinearLayout names = Ui.col(this);
         title = Ui.oneLine(Ui.text(this, espId, 16, R.color.text, true), TextUtils.TruncateAt.END);
         names.addView(title);
@@ -146,17 +146,6 @@ public class BrowserActivity extends Activity {
         super.onDestroy();
     }
 
-    private ImageView iconButton(int res, String desc, View.OnClickListener l) {
-        ImageView v = new ImageView(this);
-        int p = Ui.dp(this, 12);
-        v.setPadding(p, p, p, p);
-        v.setImageResource(res);
-        v.setContentDescription(desc);
-        v.setBackground(getDrawable(android.R.drawable.list_selector_background));
-        v.setOnClickListener(l);
-        v.setLayoutParams(Ui.lp(Ui.dp(this, 48), Ui.dp(this, 48)));
-        return v;
-    }
 
     /** Tombol Download di halaman ESP: simpan ke Download/ESP32Hub/&lt;ID&gt;/ dengan tanggal di nama file. */
     private void download(String url, String disposition, String mime) {

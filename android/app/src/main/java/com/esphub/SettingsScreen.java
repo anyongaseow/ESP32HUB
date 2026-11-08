@@ -41,20 +41,6 @@ final class SettingsScreen {
     View build() {
         LinearLayout screen = Ui.col(a);
 
-        // Tampilan: Sistem / Terang / Gelap
-        LinearLayout theme = Ui.row(a);
-        theme.addView(Ui.text(a, "Tampilan", 14, R.color.text, true), Ui.weight(1));
-        String[] names = {"Sistem", "Terang", "Gelap"};
-        int current = MainActivity.themeMode(a);
-        for (int i = 0; i < names.length; i++) {
-            final int mode = i;
-            TextView b = Ui.button(a, names[i], i == current);
-            b.setOnClickListener(v -> a.setThemeMode(mode));
-            if (i > 0) theme.addView(Ui.gap(a, 6));
-            theme.addView(b);
-        }
-        screen.addView(theme, Ui.margins(a, 20, 0, 16, 12));
-
         LinearLayout actions = Ui.row(a);
         TextView add = Ui.button(a, "+ Tambah ESP", true);
         add.setOnClickListener(v -> edit(null));
@@ -63,7 +49,7 @@ final class SettingsScreen {
         TextView bulk = Ui.button(a, "+ Tambah banyak", false);
         bulk.setOnClickListener(v -> bulkAdd());
         actions.addView(bulk, Ui.weight(1));
-        screen.addView(actions, Ui.margins(a, 16, 0, 16, 8));
+        screen.addView(actions, Ui.margins(a, 16, 0, 16, 10));
 
         search = Ui.textInput(a, "Cari ESP…", "");
         search.setBackground(Ui.round(a, R.color.card, 12));
@@ -79,7 +65,7 @@ final class SettingsScreen {
         LinearLayout inner = Ui.col(a);
         inner.setPadding(Ui.dp(a, 16), 0, Ui.dp(a, 16), Ui.dp(a, 16));
         listBox = Ui.col(a);
-        listBox.setBackground(Ui.round(a, R.color.card, 16));
+        listBox.setBackground(Ui.round(a, R.color.card, 14));
         inner.addView(listBox);
         TextView help = Ui.text(a,
                 "Tips ESP baru: SSID awal \"ESP32-xxxxxx\" (lihat daftar WiFi di HP), password awal "
@@ -88,6 +74,16 @@ final class SettingsScreen {
                 12, R.color.sub, false);
         help.setPadding(Ui.dp(a, 4), Ui.dp(a, 14), Ui.dp(a, 4), 0);
         inner.addView(help);
+        TextView guide = Ui.button(a, "Buka panduan bergambar", false);
+        guide.setOnClickListener(v -> a.openGuide());
+        inner.addView(guide, Ui.margins(a, 0, 12, 0, 0));
+
+        // Tampilan jarang diubah, jadi diletakkan di bawah daftar ESP.
+        TextView themeLabel = Ui.text(a, "Tampilan", 14, R.color.text, true);
+        themeLabel.setPadding(Ui.dp(a, 4), Ui.dp(a, 28), 0, Ui.dp(a, 8));
+        inner.addView(themeLabel);
+        inner.addView(Ui.segmented(a, new String[]{"Ikuti sistem", "Terang", "Gelap"},
+                MainActivity.themeMode(a), a::setThemeMode), Ui.lp(MATCH_PARENT, WRAP_CONTENT));
         scroll.addView(inner);
         screen.addView(scroll, new LinearLayout.LayoutParams(MATCH_PARENT, 0, 1));
 
@@ -111,7 +107,8 @@ final class SettingsScreen {
             }
             LinearLayout row = Ui.row(a);
             row.setPadding(Ui.dp(a, 16), Ui.dp(a, 12), Ui.dp(a, 16), Ui.dp(a, 12));
-            row.setBackground(a.getDrawable(android.R.drawable.list_selector_background));
+            row.setBackground(Ui.pressable(a, false));
+            row.setMinimumHeight(Ui.dp(a, 56));
             LinearLayout names = Ui.col(a);
             names.addView(Ui.oneLine(Ui.text(a, e.id, 15, R.color.text, true), TextUtils.TruncateAt.END));
             names.addView(Ui.oneLine(Ui.text(a, "SSID: " + e.ssid, 12, R.color.sub, false), TextUtils.TruncateAt.END));
@@ -128,6 +125,9 @@ final class SettingsScreen {
     }
 
     // ---------------------------------------------------------------- tambah / ubah satu ESP
+
+    /** Dipanggil dari layar Download yang masih kosong. */
+    void addNew() { edit(null); }
 
     private void edit(Store.Esp src) {
         boolean isNew = src == null;
