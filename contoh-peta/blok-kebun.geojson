@@ -1,0 +1,19 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    { "type": "Feature", "properties": { "name": "Blok A01", "fill": "#2e7d32", "stroke": "#1b5e20" },
+      "geometry": { "type": "Polygon", "coordinates": [[[111.6300,-2.7100],[111.6350,-2.7100],[111.6350,-2.7150],[111.6300,-2.7150],[111.6300,-2.7100]]] } },
+    { "type": "Feature", "properties": { "name": "Blok A02" },
+      "geometry": { "type": "Polygon", "coordinates": [
+        [[111.6355,-2.7100],[111.6405,-2.7100],[111.6405,-2.7150],[111.6355,-2.7150],[111.6355,-2.7100]],
+        [[111.6370,-2.7115],[111.6385,-2.7115],[111.6385,-2.7130],[111.6370,-2.7130],[111.6370,-2.7115]] ] } },
+    { "type": "Feature", "properties": { "Nama": "Blok B01-B02" },
+      "geometry": { "type": "MultiPolygon", "coordinates": [
+        [[[111.6300,-2.7155],[111.6350,-2.7155],[111.6350,-2.7205],[111.6300,-2.7205],[111.6300,-2.7155]]],
+        [[[111.6355,-2.7155],[111.6405,-2.7155],[111.6405,-2.7205],[111.6355,-2.7205],[111.6355,-2.7155]]] ] } },
+    { "type": "Feature", "properties": { "name": "Jalan utama", "stroke": "#8d6e63" },
+      "geometry": { "type": "LineString", "coordinates": [[111.6280,-2.7090],[111.6352,-2.7152],[111.6420,-2.7210]] } },
+    { "type": "Feature", "properties": { "name": "Pos jaga" },
+      "geometry": { "type": "Point", "coordinates": [111.6290,-2.7095] } }
+  ]
+}

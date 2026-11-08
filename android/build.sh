@@ -22,7 +22,7 @@ mkdir -p "$OUT/gen" "$OUT/classes" "$OUT/dex"
 echo "1/5 resource"
 "$AAPT2" compile --dir "$SRC/res" -o "$OUT/res.zip"
 "$AAPT2" link -I "$JAR" --manifest "$SRC/AndroidManifest.xml" \
-    --java "$OUT/gen" -o "$OUT/base.apk" "$OUT/res.zip"
+    -A "$SRC/assets" --java "$OUT/gen" -o "$OUT/base.apk" "$OUT/res.zip"
 
 echo "2/5 javac"
 find "$SRC/java" "$OUT/gen" -name '*.java' > "$OUT/sources.txt"

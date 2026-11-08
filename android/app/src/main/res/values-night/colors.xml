@@ -10,4 +10,5 @@
     <color name="ok">#4ADE80</color>
     <color name="err">#F87171</color>
     <color name="warn">#FBBF24</color>
+    <color name="press">#2960A5FA</color>
 </resources>

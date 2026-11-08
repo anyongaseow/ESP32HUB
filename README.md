@@ -1,6 +1,6 @@
 # ESP32 Hub
 
-Aplikasi Android (±54 KB, tanpa library tambahan) untuk mengunduh file `.csv` dari LittleFS/SPIFFS di banyak ESP32.
+Aplikasi Android (±99 KB, tanpa library tambahan) untuk mengunduh file `.csv` dari LittleFS/SPIFFS di banyak ESP32.
 Aplikasi tersambung ke satu ESP pada satu waktu, dan tiap ESP punya WiFi (hotspot) sendiri.
 
 ```
@@ -20,6 +20,10 @@ Setelah menyala pertama kali:
 - Password: `12345678`
 - Untuk reset ke pengaturan awal: tahan tombol BOOT saat ESP dinyalakan selama ±3 detik.
 
+GPS (untuk layar Peta): sambungkan modul GPS NMEA (mis. NEO-6M) — TX modul ke GPIO16, VCC, GND. Firmware membacanya
+tanpa library dan menyediakan `GET /gps`. Pin/baud diatur di `GPS_RX_PIN`, `GPS_BAUD`. Sudah punya kode GPS sendiri?
+Set `USE_GPS 0` lalu panggil `gpsSet(lat, lon, alt, sats, hdop)` tiap ada posisi baru.
+
 Upload firmware cukup sekali. Setelah itu, SSID dan password diubah dari aplikasi.
 
 ### Firmware lain (tanpa upload ulang)
@@ -32,6 +36,8 @@ Aplikasi selalu mencoba `/list` lebih dulu. Kalau ESP menjawab 404, aplikasi ber
 Alamat yang mengandung kata seperti `delete`, `restart`, `set`, `save`, `config` tidak pernah dipanggil.
 
 ## 2. Aplikasi
+- **Panduan** (ikon ? di kanan atas, atau **Buka panduan bergambar** di Pengaturan): panduan singkat bergambar di dalam aplikasi,
+  bisa dibuka tanpa internet. Sumbernya `android/app/src/main/assets/panduan.html`.
 - **⚙ Pengaturan**
   - **+ Tambah ESP**: isi ID, SSID, dan password.
   - Untuk ESP baru: centang **Kirim juga ke ESP**, lalu isi login awal (`ESP32-xxxxxx` / `12345678`). Aplikasi akan tersambung ke ESP, mengirim SSID dan password baru, lalu ESP restart.
@@ -44,6 +50,33 @@ Alamat yang mengandung kata seperti `delete`, `restart`, `set`, `save`, `config`
   - File bertanda **✓** diketuk untuk dibuka di Google Sheets (atau aplikasi CSV lain). Tekan lama untuk unduh ulang.
   - **Buka web**: membuka halaman web ESP di dalam aplikasi untuk melihat dashboard dan mengatur alat.
   - **Unduh semua** (bawah layar): unduh dari semua ESP yang tampil, satu per satu.
+- **Peta** (ikon peta di kanan atas, atau tombol **Peta GPS** di kartu ESP yang tersambung):
+  - **Impor**: pilih file peta **GeoJSON** (`.geojson`/`.json`), **KML**, **KMZ**, atau **GeoPDF** (`.pdf`). Bisa beberapa file (lapisan) sekaligus.
+    Peta disalin ke HP, jadi tetap tampil **tanpa internet**. Warna dari file (simplestyle GeoJSON, Style/StyleMap KML) ikut dipakai.
+  - Titik biru **Sensor** = lokasi GPS sensor, dibaca tiap 2 detik dari `GET /gps` ESP yang sedang tersambung, dengan jejak gerakannya.
+    Tanpa sambungan, posisi terakhir tetap tampil (abu-abu, "Sensor (terakhir)").
+  - Titik hijau **HP** = lokasi HP sendiri (GPS HP, jalan tanpa internet), dengan lingkaran akurasi. Tampil bersama titik sensor,
+    jadi bisa dipakai saat tidak ada sensor atau untuk berjalan menuju sensor. Aplikasi meminta izin lokasi saat Peta pertama dibuka.
+  - Geser dengan satu jari, cubit untuk zoom, ketuk dua kali untuk memperbesar. **Semua**: tampilkan seluruh peta.
+    **Lokasi**: ke sensor (bila sedang menerima posisi), kalau tidak ke lokasi HP.
+  - **Lapisan**: centang untuk menampilkan/menyembunyikan peta, **Hapus…** untuk menghapus dari aplikasi.
+  - **+ Titik** → **Tambah titik**: satu tekan menambah titik di posisi **GPS HP** saat ini, dengan nama otomatis
+    (Titik 1, Titik 2, … nomornya terus berlanjut). Titik **hanya bisa ditambah bila akurasi GPS HP ≤ 5 m**; kalau lebih dari
+    5 m tombolnya redup dan muncul peringatan. Petunjuk di atas tombol menampilkan akurasi saat ini (hijau = siap, oranye = belum).
+    Mengetuk peta tidak menambah titik. Ketuk titik oranye untuk mengganti nama atau menghapus.
+    Titik tetap tersimpan walau aplikasi ditutup.
+  - **Simpan peta**: peta yang tampil + titik disimpan sebagai **file peta baru**:
+    - ada peta PDF yang tampil → **GeoPDF** baru (titik dan lapisan vektor digambar di atas peta PDF, koordinat ikut tersimpan);
+    - tanpa PDF → **GeoJSON** baru berisi semua bentuk dari lapisan yang tampil + titik (warna ikut tersimpan).
+    Peta baru langsung jadi lapisan di aplikasi (lapisan lama disembunyikan), dan salinannya ada di `Download/ESP32Hub/Peta/`
+    untuk dikirim lewat WA atau dibuka di QGIS / Avenza / Google Earth.
+  - **Data titik (GeoJSON)**: centang "Simpan juga titik saja sebagai GeoJSON" (aktif bawaan) saat Simpan peta. Hasilnya
+    `Download/ESP32Hub/Peta/<nama peta> - titik.geojson`, berisi titik saja dengan nama, `lat`, `lon`, waktu dibuat, dan `akurasi_m`,
+    juga bila peta dasarnya PDF. Bisa dibuka di QGIS, geojson.io, atau diimpor lagi ke aplikasi ini.
+  - **GeoPDF**: PDF yang menyimpan koordinat (ekspor GeoPDF dari QGIS, GDAL, ArcGIS, Avenza, dsb.). Koordinat dibaca dari
+    format ISO 32000 (`/VP` + `/Measure` `/GEO`) atau OGC/TerraGo `LGIDict` (proyeksi geografis atau UTM). Halaman digambar
+    sebagai gambar (maks. 4096 px) di bawah lapisan lain dan titik GPS. PDF tanpa koordinat (scan biasa) belum bisa dipakai.
+  - Belum didukung: gambar foto udara di KML (GroundOverlay), PDF tanpa koordinat, dan peta online. Contoh file ada di `contoh-peta/`.
 - File tersimpan di `Download/ESP32Hub/<ID ESP>/` dengan tanggal di nama file, misalnya `data_2026-10-01_2026-10-31.csv`.
   Tanggal diambil dari isi file (pertama dan terakhir); bila tidak ada, dari halaman web ESP, lalu dari tanggal HP.
 

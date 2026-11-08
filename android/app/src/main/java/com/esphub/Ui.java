@@ -3,6 +3,8 @@ package com.esphub;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Typeface;
+import android.content.res.TypedArray;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.text.InputType;
@@ -12,6 +14,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -64,18 +67,81 @@ final class Ui {
         return t;
     }
 
-    /** Tombol: primary = isi warna aksen, selain itu = garis tipis. */
+    /** Tombol: primary = isi warna aksen, selain itu = garis tipis. Tinggi 44dp supaya mudah diketuk di lapangan. */
     static TextView button(Context c, String s, boolean primary) {
         TextView b = text(c, s, 14, primary ? R.color.onAccent : R.color.accent, true);
         b.setGravity(Gravity.CENTER);
-        b.setPadding(dp(c, 14), dp(c, 8), dp(c, 14), dp(c, 8));
-        b.setMinHeight(dp(c, 36));
-        GradientDrawable bg = round(c, primary ? R.color.accent : R.color.card, 18);
+        b.setPadding(dp(c, 16), dp(c, 10), dp(c, 16), dp(c, 10));
+        b.setMinHeight(dp(c, 44));
+        GradientDrawable bg = round(c, primary ? R.color.accent : R.color.card, 10);
         if (!primary) bg.setStroke(dp(c, 1), color(c, R.color.line));
-        b.setBackground(new RippleDrawable(ColorStateList.valueOf(color(c, R.color.line)), bg, null));
+        b.setBackground(new RippleDrawable(ColorStateList.valueOf(color(c, R.color.press)), bg, null));
         b.setClickable(true);
         b.setFocusable(true);
         return b;
+    }
+
+    /** Latar ripple dari tema untuk baris yang bisa diketuk (pengganti selector Holo lama). */
+    static Drawable pressable(Context c, boolean borderless) {
+        TypedArray a = c.obtainStyledAttributes(new int[]{borderless
+                ? android.R.attr.selectableItemBackgroundBorderless
+                : android.R.attr.selectableItemBackground});
+        Drawable d = a.getDrawable(0);
+        a.recycle();
+        return d;
+    }
+
+    /** Tombol ikon 48x48dp di header. */
+    static ImageView iconButton(Context c, int res, String desc, View.OnClickListener l) {
+        ImageView v = new ImageView(c);
+        int p = dp(c, 12);
+        v.setPadding(p, p, p, p);
+        v.setImageResource(res);
+        v.setContentDescription(desc);
+        v.setBackground(pressable(c, true));
+        v.setOnClickListener(l);
+        v.setLayoutParams(lp(dp(c, 48), dp(c, 48)));
+        return v;
+    }
+
+    /** Label status berlatar warna status yang dipudarkan. */
+    static void chip(TextView t, int colorRes) {
+        int col = color(t.getContext(), colorRes);
+        GradientDrawable g = new GradientDrawable();
+        g.setColor((col & 0x00FFFFFF) | 0x24000000);
+        g.setCornerRadius(dp(t.getContext(), 6));
+        t.setBackground(g);
+        t.setTextColor(col);
+    }
+
+    /** Garis pemisah 1px. */
+    static View divider(Context c) {
+        View v = new View(c);
+        v.setBackgroundColor(color(c, R.color.line));
+        v.setLayoutParams(lp(ViewGroup.LayoutParams.MATCH_PARENT, 1));
+        return v;
+    }
+
+    /** Pilihan bersebelahan (mis. Sistem / Terang / Gelap): yang aktif terisi aksen. */
+    static LinearLayout segmented(Context c, String[] names, int current, java.util.function.IntConsumer pick) {
+        LinearLayout box = row(c);
+        GradientDrawable bg = round(c, R.color.card, 10);
+        bg.setStroke(dp(c, 1), color(c, R.color.line));
+        box.setBackground(bg);
+        int pad = dp(c, 3);
+        box.setPadding(pad, pad, pad, pad);
+        for (int i = 0; i < names.length; i++) {
+            final int idx = i;
+            boolean on = i == current;
+            TextView t = text(c, names[i], 14, on ? R.color.onAccent : R.color.text, on);
+            t.setGravity(Gravity.CENTER);
+            t.setMinHeight(dp(c, 38));
+            if (on) t.setBackground(round(c, R.color.accent, 8));
+            else t.setBackground(pressable(c, false));
+            t.setOnClickListener(v -> pick.accept(idx));
+            box.addView(t, weight(1));
+        }
+        return box;
     }
 
     static ProgressBar bar(Context c) {
